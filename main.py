@@ -121,3 +121,108 @@ def frame_producer(cap, frame_queue, term_cols: int, term_rows: int, ascii_table
     except Exception as e:
         print(f"Error in frame producer: {e}", file=sys.stderr)
 
+def main():
+    enable_ansi_colors()
+    
+    # Configuration
+    is_paused = False
+    time_multiplier = 1.0
+    ascii_table = "     .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$"
+
+    term_size = get_terminal_size()
+    term_cols, term_rows = term_size.columns, term_size.lines
+    
+    video_file = handle_args()
+    
+    cap = cv2.VideoCapture(video_file)
+    if not cap.isOpened():
+        print(f"Unable to open video file: {video_file}")
+        return
+
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_delay = 1.0 / fps if fps > 0 else 1.0 / 30.0  # Default to 30 FPS if unable to get FPS
+    
+    print("\033[?1049h", end="")  #enter alternate screen
+    hide_cursor()
+    
+    frame_queue = queue.Queue(maxsize=50)
+    producer_thread = threading.Thread(
+        target=frame_producer, 
+        args=(cap, frame_queue, term_cols, term_rows, ascii_table),
+        daemon=True
+    )
+    producer_thread.start()
+    
+    try:
+        with NonBlockingInput():
+            while True:
+                indicator = f"{1.0/time_multiplier:.1f}x" if not is_paused else "paused"
+                move_cursor((term_cols - len(indicator)) // 2 + 1, term_rows)
+                set_color("yellow")
+                print(indicator, end="")
+                set_color("reset")
+                sys.stdout.flush()
+                
+                if not is_paused:
+                    try:
+                        frame_data = frame_queue.get(timeout=0.1)
+                        move_cursor(1, 1)
+                        clear_screen()
+                        print(frame_data, end="")
+                        
+                        time.sleep(frame_delay * time_multiplier)
+                    except queue.Empty:
+                        if not producer_thread.is_alive():
+                            break
+                 
+                char = None
+                try:
+                    with NonBlockingInput() as nbi:
+                        char = nbi.get_char()
+                except:
+                    pass
+                
+                if char:
+                    if char == 'q' or char == 'Q':
+                        break
+                    elif char == ' ':
+                        is_paused = not is_paused
+                    elif char == 'LEFT':  #left arrow - slow down
+                        if time_multiplier < 4.0:
+                            time_multiplier *= 2.0
+                    elif char == 'RIGHT':  #right arrow - speed up
+                        if time_multiplier > 0.25:
+                            time_multiplier /= 2.0
+                
+                move_cursor(1, 1)
+        
+        exit_prompt = "VIDEO FEED ENDED. PRESS ANY KEY TO EXIT"
+        move_cursor((term_cols - len(exit_prompt)) // 2 + 1, term_rows)
+        set_color("green")
+        print(exit_prompt, end="")
+        set_color("reset")
+        sys.stdout.flush()
+        
+        with NonBlockingInput():
+            while True:
+                char = None
+                try:
+                    with NonBlockingInput() as nbi:
+                        char = nbi.get_char()
+                        if char:
+                            break
+                except:
+                    pass
+                time.sleep(0.1)
+    
+    except KeyboardInterrupt:
+        pass
+    
+    finally:
+        cap.release()
+        print("\033[?1049l", end="")
+        show_cursor()
+        print()
+
+if __name__ == "__main__":
+    main()

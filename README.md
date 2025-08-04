@@ -2,9 +2,6 @@
 
 A terminal-based video player that converts video files into colored ASCII art and plays them in real-time.
 
-![ASCII Video Demo]()
-
-
 ## How It Works
 1. **Frame Reading**: OpenCV reads video frames sequentially
 2. **Resizing**: Each frame is resized to fit your terminal dimensions

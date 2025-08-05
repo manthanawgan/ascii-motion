@@ -25,8 +25,7 @@ A terminal-based video player that converts video files into colored ASCII art a
 
 - Python 3.7+
 - OpenCV
-- A terminal that supports ANSI colors
-
+- 
 ## Installation
 
 1. Clone this repository:
@@ -43,12 +42,12 @@ pip install -r requirements.txt
 ## Usage
 
 ```bash
-python ascii_video_player.py <video_file>
+python main.py <video_file>
 ```
 
 ### Example
 ```bash
-python ascii_video_player.py my_video.mp4
+python main.py my_video.mp4
 ```
 
 ## Controls
